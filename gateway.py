@@ -74,3 +74,25 @@ def laya_saglik(timeout: int = 15) -> dict:
     req = urllib.request.Request(f"{base}/laya/health", headers={"X-Gateway-Key": key})
     with urllib.request.urlopen(req, timeout=timeout) as r:
         return json.loads(r.read().decode())
+
+
+def nobet_at(proje: str, durum: str = "iyi", not_: str = "", timeout: int = 10) -> dict:
+    return _istek("/nobet/beat", {"proje": proje, "durum": durum, "not": not_}, timeout)
+
+
+def nobet_durum(timeout: int = 15) -> dict:
+    base, key = _cfg()
+    req = urllib.request.Request(f"{base}/nobet/durum", headers={"X-Gateway-Key": key})
+    with urllib.request.urlopen(req, timeout=timeout) as r:
+        return json.loads(r.read().decode())
+
+
+def maskele(metin: str, timeout: int = 10) -> dict:
+    return _istek("/maske", {"metin": metin}, timeout)
+
+
+def sir_al(proje: str, timeout: int = 15) -> dict:
+    base, key = _cfg()
+    req = urllib.request.Request(f"{base}/sir/{proje}", headers={"X-Gateway-Key": key})
+    with urllib.request.urlopen(req, timeout=timeout) as r:
+        return json.loads(r.read().decode())

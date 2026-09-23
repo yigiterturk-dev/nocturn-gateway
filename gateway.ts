@@ -108,3 +108,27 @@ export async function layaSaglik(a?: GatewayAyar): Promise<{ status: string; mod
     clearTimeout(z);
   }
 }
+
+/** Nöbet: kalp atışı gönder (proje dakikada bir çağırır; gelmezse "SESSİZ"). */
+export async function nobetAt(proje: string, durum: "iyi" | "bozuk" = "iyi", not = "", a?: GatewayAyar): Promise<{ ok: boolean }> {
+  return istek<{ ok: boolean }>("/nobet/beat", { proje, durum, not }, { ...a, timeoutMs: 10_000 });
+}
+
+/** Nöbet tablosu: hangi proje canlı, hangisi SESSİZ. */
+export async function nobetDurum(a?: GatewayAyar): Promise<{ simdi: number; projeler: Array<{ proje: string; sure_sn: number; durum: string; ses: string; not: string }> }> {
+  const { base, key, timeout } = cfg(a);
+  const r = await fetch(`${base}/nobet/durum`, { headers: { "X-Gateway-Key": key }, signal: AbortSignal.timeout(timeout) });
+  return (await r.json()) as never;
+}
+
+/** KVKK maskeleme: metindeki TCKN/IBAN/telefon/e-posta/ad-soyad maskelenir. */
+export async function maskele(metin: string, a?: GatewayAyar): Promise<{ masked: string }> {
+  return istek<{ masked: string }>("/maske", { metin }, { ...a, timeoutMs: 10_000 });
+}
+
+/** Sır kasası: projenin sırlarını gateway'den çek (boot'ta). */
+export async function sirAl(proje: string, a?: GatewayAyar): Promise<Record<string, string>> {
+  const { base, key, timeout } = cfg(a);
+  const r = await fetch(`${base}/sir/${encodeURIComponent(proje)}`, { headers: { "X-Gateway-Key": key }, signal: AbortSignal.timeout(timeout) });
+  return (await r.json()) as Record<string, string>;
+}
