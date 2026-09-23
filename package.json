@@ -1,0 +1,13 @@
+{
+  "name": "nocturn-gateway",
+  "version": "0.1.0",
+  "description": "AI Gateway client (Jev + Laya) — zero dependencies, TypeScript + Python",
+  "type": "module",
+  "main": "gateway.ts",
+  "types": "gateway.ts",
+  "files": ["gateway.ts", "gateway.py", "README.md"],
+  "keywords": ["ai", "gateway", "llm", "turkish", "kvkk", "nocturn"],
+  "license": "MIT",
+  "author": "Yigit Erturk <sales@nocturndev.com>",
+  "repository": { "type": "git", "url": "git+https://github.com/yigiterturk-dev/nocturn-gateway.git" }
+}
