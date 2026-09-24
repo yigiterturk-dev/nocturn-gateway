@@ -1,13 +1,49 @@
 {
   "name": "nocturn-gateway",
   "version": "0.1.0",
-  "description": "AI Gateway client (Jev + Laya) — zero dependencies, TypeScript + Python",
+  "description": "AI Gateway client (Jev + Laya) — zero dependencies, library + CLI",
   "type": "module",
-  "main": "gateway.ts",
-  "types": "gateway.ts",
-  "files": ["gateway.ts", "gateway.py", "README.md"],
-  "keywords": ["ai", "gateway", "llm", "turkish", "kvkk", "nocturn"],
+  "main": "dist/gateway.js",
+  "types": "dist/gateway.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/gateway.d.ts",
+      "default": "./dist/gateway.js"
+    }
+  },
+  "bin": {
+    "nocturn-gateway": "dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "gateway.py",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "test": "npm run build && node --test \"test/*.test.mjs\"",
+    "prepublishOnly": "npm test"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "keywords": [
+    "ai",
+    "gateway",
+    "llm",
+    "judge",
+    "reranker",
+    "kvkk",
+    "nocturn"
+  ],
   "license": "MIT",
   "author": "Yigit Erturk <sales@nocturndev.com>",
-  "repository": { "type": "git", "url": "git+https://github.com/yigiterturk-dev/nocturn-gateway.git" }
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yigiterturk-dev/nocturn-gateway.git"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.2",
+    "typescript": "^5.6.0"
+  }
 }

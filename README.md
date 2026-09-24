@@ -10,7 +10,7 @@ Nocturn projelerine tek kapıdan: `ai.nocturndev.com`.
 ## TypeScript
 
 ```bash
-npm i github:yigiterturk-dev/nocturn-gateway
+npm i nocturn-gateway
 export AI_GATEWAY_KEY=...
 ```
 
@@ -20,6 +20,19 @@ import { jevSkorla, layaSaglik } from "nocturn-gateway";
 const skorlar = await jevSkorla("bu madde iade hakkını düzenliyor mu?", adayMetinler);
 console.log(await layaSaglik()); // { status: "ok", model: "convaiinnovations/laya" }
 ```
+
+## CLI — her terminalde
+
+```bash
+npx nocturn-gateway skor "bu madde iade hakkını düzenliyor mu?" "Madde 12..." "Madde 7..."
+npx nocturn-gateway laya health
+npx nocturn-gateway nobet durum
+npx nocturn-gateway maske "TCKN 12345678901"
+npx nocturn-gateway sir legafetch
+```
+
+Ortam: `AI_GATEWAY_KEY` (şart), `AI_GATEWAY_URL` (varsayılan https://ai.nocturndev.com).
+Çıktı JSON; hata → exit 1 (CI gate olarak kullanılabilir).
 
 ## Python
 

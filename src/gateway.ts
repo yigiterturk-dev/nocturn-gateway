@@ -77,7 +77,7 @@ export async function jevSkorla(
           `Aynı konuda olması yetmez; sorulan ihtiyacı bu metin karşılamalıdır.`,
     };
   });
-  const yanit = await istek<NoulCevap>("/jev/v1/systemone", { model: a?.model ?? "jev-latest", state, questions }, a);
+  const yanit = await istek<NoulYanit>("/jev/v1/systemone", { model: a?.model ?? "jev-latest", state, questions }, a);
   return adaylar.map((_, i) => {
     const cev = yanit.answers?.[`m${i}`];
     return cev?.type === "noul" && typeof cev.noul === "number"
