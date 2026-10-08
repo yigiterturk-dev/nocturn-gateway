@@ -76,6 +76,56 @@ def laya_saglik(timeout: int = 15) -> dict:
         return json.loads(r.read().decode())
 
 
+# ——— Jenerik Laya yüzeyi — hazır şema/triyaj dayatmaz; soruyu sen kurarsın ———
+
+
+def laya_sor(state: dict, questions: dict, timeout: int = 30) -> dict:
+    """Jenerik Laya çağrısı (predict ucu): state + questions → answers. Ham cevap döner."""
+    return laya_istek("predict", state, questions, timeout)
+
+
+def laya_skorla(soru: str, adaylar: list, metin_uzunluk: int = 700, timeout: int = 30) -> list:
+    """Adayları TEK çağrıda noul ile skorla. Dizi input sırasına hizalı; cevapsız aday None."""
+    if not adaylar:
+        return []
+    state: dict = {}
+    questions: dict = {}
+    for i, metin in enumerate(adaylar):
+        state[f"aday_{i}"] = str(metin)[:metin_uzunluk]
+        questions[f"m{i}"] = {
+            "type": "noul",
+            "instructions": (
+                f'aday_{i} alanındaki metin, "{soru}" sorusuna DOĞRUDAN karşılık geliyor mu? '
+                "Aynı konuda olması yetmez; sorulan şeyi bu metin karşılamalıdır."
+            ),
+        }
+    yanit = laya_sor(state, questions, timeout)
+    cikti = []
+    for i in range(len(adaylar)):
+        c = (yanit.get("answers") or {}).get(f"m{i}") or {}
+        deger = c.get("noul") if isinstance(c.get("noul"), (int, float)) else c.get("score")
+        cikti.append(float(deger) if isinstance(deger, (int, float)) else None)
+    return cikti
+
+
+def laya_sirala(soru: str, adaylar: list, metin_uzunluk: int = 700, azalan: bool = True, timeout: int = 30) -> list:
+    """Adayları Laya skoruna göre yeniden sırala: [{metin, skor, index}] döner."""
+    skorlar = laya_skorla(soru, adaylar, metin_uzunluk, timeout)
+    sirali = [{"metin": m, "skor": skorlar[i], "index": i} for i, m in enumerate(adaylar)]
+    sirali.sort(key=lambda t: (t["skor"] if t["skor"] is not None else float("-inf")), reverse=azalan)
+    return sirali
+
+
+def laya_guard(prompt: str, timeout: int = 30) -> dict:
+    """Laya guard: prompt risklerini noul ile skorla. Cevapta 'engelle' + eşik döner."""
+    return _istek("/laya/guard", {"prompt": prompt}, timeout)
+
+
+def laya_sort(items: list, question: dict, order: str = "desc", timeout: int = 60) -> dict:
+    """Laya sort ucu: listeyi verdiğin skor/choice sorusuyla sunucuda sıralar."""
+    return _istek("/laya/sort", {"items": items, "question": question, "order": order}, timeout)
+
+
 def nobet_at(proje: str, durum: str = "iyi", not_: str = "", timeout: int = 10) -> dict:
     return _istek("/nobet/beat", {"proje": proje, "durum": durum, "not": not_}, timeout)
 

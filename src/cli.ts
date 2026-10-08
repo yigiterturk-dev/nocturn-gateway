@@ -13,14 +13,18 @@
  * Ortam: AI_GATEWAY_KEY (şart), AI_GATEWAY_URL (opsiyonel).
  * Çıktı: JSON. Hata → stderr + exit 1.
  */
-import { jevSkorla, layaIstek, layaSaglik, maskele, nobetAt, nobetDurum, sirAl } from "./gateway.js";
+import { jevSkorla, layaIstek, layaSaglik, layaSor, layaSkorla, layaSirala, layaGuard, layaSort, maskele, nobetAt, nobetDurum, sirAl } from "./gateway.js";
 
 const YARDIM = `nocturn-gateway — AI Gateway istemcisi (Jev + Laya)
 
 Kullanım:
   nocturn-gateway skor <soru> <aday...>            Jev olasılıkları (0-1, cevapsız aday: null)
-  nocturn-gateway laya health                      Laya sağlık kontrolü
-  nocturn-gateway laya <predict|triage|guard|sort> <state-json> <questions-json>
+  nocturn-gateway laya saglik                      Laya sağlık kontrolü
+  nocturn-gateway laya skorla "<soru>" <aday...>   Laya ile adayları skorla (noul, null=cevapsız)
+  nocturn-gateway laya sirala "<soru>" <aday...>   Laya skoruna göre sırala
+  nocturn-gateway laya sor <state-json> <questions-json>   Jenerik, kendi soruların
+  nocturn-gateway laya guard "<prompt>"            Prompt guardrail riski
+  nocturn-gateway laya sort <items-json> <question-json>   Sunucu tarafı sıralama
   nocturn-gateway nobet beat <proje> [iyi|bozuk] [not]   Kalp atışı gönder
   nocturn-gateway nobet durum                      Nöbet tablosu
   nocturn-gateway maske <metin>                    TCKN/IBAN/telefon/e-posta maskele
@@ -40,12 +44,38 @@ async function calistir(args: string[]): Promise<Cikti> {
       return { soru, adaylar, skorlar };
     }
     case "laya": {
-      const [yol, ...jsonlar] = kalan;
-      if (yol === "health") return await layaSaglik();
-      if (yol !== "predict" && yol !== "triage" && yol !== "guard" && yol !== "sort")
-        throw new Error("kullanım: nocturn-gateway laya <health|predict|triage|guard|sort> [state-json] [questions-json]");
-      if (jsonlar.length < 2) throw new Error("state ve questions JSON argümanları şart");
-      return await layaIstek(yol, JSON.parse(jsonlar[0]), JSON.parse(jsonlar[1]));
+      const [yol, ...kalanlar] = kalan;
+      if (yol === "health" || yol === "saglik" || yol === "sağlık") return await layaSaglik();
+      // jenerik, triyajsız yüzey — soruyu sen kurarsın
+      if (yol === "sor") {
+        if (kalanlar.length < 2) throw new Error('kullanım: nocturn-gateway laya sor <state-json> <questions-json>');
+        return await layaSor(JSON.parse(kalanlar[0]), JSON.parse(kalanlar[1]));
+      }
+      if (yol === "skorla" || yol === "skor") {
+        const [soru, ...adaylar] = kalanlar;
+        if (!soru || adaylar.length === 0) throw new Error('kullanım: nocturn-gateway laya skorla "<soru>" <aday...>');
+        const skorlar = await layaSkorla(soru, adaylar);
+        return { soru, adaylar, skorlar };
+      }
+      if (yol === "sirala" || yol === "sırala") {
+        const [soru, ...adaylar] = kalanlar;
+        if (!soru || adaylar.length === 0) throw new Error('kullanım: nocturn-gateway laya sirala "<soru>" <aday...>');
+        return { soru, sonuc: await layaSirala(soru, adaylar) };
+      }
+      if (yol === "guard") {
+        if (!kalanlar[0]) throw new Error('kullanım: nocturn-gateway laya guard "<prompt>"');
+        return await layaGuard(kalanlar.join(" "));
+      }
+      if (yol === "sort") {
+        if (kalanlar.length < 2) throw new Error("kullanım: nocturn-gateway laya sort <items-json> <question-json>");
+        return await layaSort(JSON.parse(kalanlar[0]), JSON.parse(kalanlar[1]));
+      }
+      // back-compat: ham uçlar (predict/triage/guard/sort) state+questions ile
+      if (yol === "predict" || yol === "triage") {
+        if (kalanlar.length < 2) throw new Error("state ve questions JSON argümanları şart");
+        return await layaIstek(yol, JSON.parse(kalanlar[0]), JSON.parse(kalanlar[1]));
+      }
+      throw new Error("kullanım: nocturn-gateway laya <health|sor|skorla|sirala|guard|sort|predict|triage>");
     }
     case "nobet": {
       const [alt, proje, durum, not_] = kalan;

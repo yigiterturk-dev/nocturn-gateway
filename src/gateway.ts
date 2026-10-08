@@ -95,6 +95,111 @@ export function layaIstek(yol: "predict" | "triage" | "guard" | "sort", state: R
   return istek<LayaKarar>(`/laya/${yol}`, { state, questions }, a);
 }
 
+// ——— Jenerik Laya yüzeyi — hazır şema/triyaj dayatmaz; soruyu sen kurarsın ———
+
+/** Laya'nın tek soruya dönebildiği cevap tipleri. */
+export type LayaSoruTipi = "noul" | "choice" | "score";
+
+export interface LayaSoru {
+  type: LayaSoruTipi;
+  instructions: string;
+  /** choice için zorunlu: {anahtar: "açıklama"} */
+  criteria?: Record<string, string> | string[];
+}
+
+/** Tek bir sorunun cevabı — tip'e göre alanlardan biri dolu döner. */
+export interface LayaCevap {
+  type: LayaSoruTipi | "gate";
+  noul?: number;
+  choice?: string;
+  score?: number;
+  confidence?: number;
+  probabilities?: Record<string, number>;
+  [alan: string]: unknown;
+}
+
+export interface LayaSonuc {
+  latency_ms?: number;
+  answers: Record<string, LayaCevap>;
+  [alan: string]: unknown;
+}
+
+/**
+ * Jenerik Laya çağrısı: state alanların + vereceğin SORULAR → cevaplar.
+ * Eşik/sıralama mantığı buraya gömülmez; ham cevap döner. (predict ucu.)
+ */
+export async function layaSor(
+  state: Record<string, unknown>,
+  questions: Record<string, LayaSoru>,
+  a?: GatewayAyar,
+): Promise<LayaSonuc> {
+  return istek<LayaSonuc>("/laya/predict", { state, questions }, a);
+}
+
+/**
+ * Laya ile skorla: `metin_al` ile state'e yazılan metinleri TEK çağrıda sorar.
+ * Dönen dizi input sırasına hizalı; cevapsız/tip uyuşmayan aday `null`.
+ * noul → 0-1 skor, score → ham puan, choice → etiket. Eşik KARARI istemcide.
+ */
+export async function layaSkorla(
+  soru: string,
+  adaylar: string[],
+  a?: GatewayAyar & { metinUzunluk?: number },
+): Promise<Array<number | null>> {
+  if (adaylar.length === 0) return [];
+  const state: Record<string, unknown> = {};
+  const questions: Record<string, LayaSoru> = {};
+  adaylar.forEach((metin, i) => {
+    state[`aday_${i}`] = metin.slice(0, a?.metinUzunluk ?? 700);
+    questions[`m${i}`] = {
+      type: "noul",
+      instructions:
+        `aday_${i} alanındaki metin, "${soru}" sorusuna DOĞRUDAN karşılık geliyor mu? ` +
+        `Aynı konuda olması yetmez; sorulan şeyi bu metin karşılamalıdır.`,
+    };
+  });
+  const sonuc = await layaSor(state, questions, a);
+  return adaylar.map((_, i) => {
+    const c = sonuc.answers?.[`m${i}`];
+    const deger = c?.noul ?? c?.score;
+    return typeof deger === "number" ? deger : null;
+  });
+}
+
+/** Laya ile sırala: adayları tek kriterle (noul/score) puana göre yeniden dizer. */
+export async function layaSirala(
+  soru: string,
+  adaylar: string[],
+  a?: GatewayAyar & { metinUzunluk?: number; azalan?: boolean },
+): Promise<Array<{ metin: string; skor: number | null; index: number }>> {
+  const skorlar = await layaSkorla(soru, adaylar, a);
+  const azalan = a?.azalan ?? true;
+  return adaylar
+    .map((metin, index) => ({ metin, skor: skorlar[index], index }))
+    .sort((x, y) => {
+      const sx = x.skor ?? Number.NEGATIVE_INFINITY;
+      const sy = y.skor ?? Number.NEGATIVE_INFINITY;
+      return azalan ? sy - sx : sx - sy;
+    });
+}
+
+/**
+ * Laya guard: prompt'un güvenli/uygun olup olmadığını noul riskleriyle skorlar.
+ * `engelle` eşiği sunucudaki GUARD_THRESHOLD ile verilir (cevapta döner).
+ */
+export async function layaGuard(prompt: string, a?: GatewayAyar): Promise<LayaSonuc> {
+  return istek<LayaSonuc>("/laya/guard", { prompt }, a);
+}
+
+/** Laya sort ucu: listeyi verdiğin skor/choice sorusuyla sıralar (sunucu tarafı sıralama). */
+export async function layaSort(
+  items: Array<{ id?: unknown; text: string }>,
+  question: LayaSoru,
+  a?: GatewayAyar & { order?: "asc" | "desc" },
+): Promise<LayaKarar> {
+  return istek<LayaKarar>("/laya/sort", { items, question, order: a?.order ?? "desc" }, a);
+}
+
 /** Laya sağlık kontrolü — GET; gateway + tünel + model hepsi ayakta mı? */
 export async function layaSaglik(a?: GatewayAyar): Promise<{ status: string; model: string; checkpoint: string }> {
   const { base, key, timeout } = cfg(a);

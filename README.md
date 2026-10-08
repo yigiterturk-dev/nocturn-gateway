@@ -15,17 +15,28 @@ export AI_GATEWAY_KEY=...
 ```
 
 ```ts
-import { jevSkorla, layaSaglik } from "nocturn-gateway";
+import { jevSkorla, layaSaglik, layaSor, layaSkorla, layaSirala } from "nocturn-gateway";
 
 const skorlar = await jevSkorla("bu madde iade hakkını düzenliyor mu?", adayMetinler);
 console.log(await layaSaglik()); // { status: "ok", model: "convaiinnovations/laya" }
+
+// Laya: hazır şema/triyaj dayatmaz — soruyu sen kurarsın
+const cevap = await layaSor(
+  { text: "Ürün 3 gündür açılmıyor" },
+  { duygu: { type: "choice", instructions: "Baskın duygu?", criteria: { ofke: "kizgin", notr: "notr" } } },
+);
+const puanlar = await layaSkorla("Para iadesi talebi mi?", metinler);        // TEK çağrı, hizalı, cevapsız = null
+const sirali = await layaSirala("Aciliyet?", metinler);                      // skora göre azalan
 ```
 
 ## CLI — her terminalde
 
 ```bash
 npx nocturn-gateway skor "bu madde iade hakkını düzenliyor mu?" "Madde 12..." "Madde 7..."
-npx nocturn-gateway laya health
+npx nocturn-gateway laya saglik
+npx nocturn-gateway laya skorla "Para iadesi talebi mi?" "İade istiyorum" "Kargoya verildi"
+npx nocturn-gateway laya sirala "Aciliyet?" "Acil!" "Normal"
+npx nocturn-gateway laya sor '{"text":"..."}' '{"q":{"type":"noul","instructions":"..."}}'
 npx nocturn-gateway nobet durum
 npx nocturn-gateway maske "TCKN 12345678901"
 npx nocturn-gateway sir legafetch
@@ -37,7 +48,9 @@ Ortam: `AI_GATEWAY_KEY` (şart), `AI_GATEWAY_URL` (varsayılan https://ai.noctur
 ## Python
 
 ```python
-from gateway import jev_skorla, laya_saglik
+from gateway import jev_skorla, laya_saglik, laya_sor, laya_skorla, laya_sirala
 skorlar = jev_skorla("bu madde iade hakkını düzenliyor mu?", aday_metinler)
 print(laya_saglik())
+print(laya_skorla("Para iadesi talebi mi?", adaylar))   # cevapsız aday None
+print(laya_sor({"text": "..."}, {"duygu": {"type": "noul", "instructions": "..."}}))
 ```
