@@ -2,7 +2,7 @@
  * nocturn-gateway — AI Gateway istemcisi (Jev + Laya), sıfır bağımlılık.
  *
  * Kullanım:
- *   import { jevSkorla, layaTriyaj } from "nocturn-gateway";
+ *   import { jevSkorla, layaSkorla, layaSor } from "nocturn-gateway";
  *   const skorlar = await jevSkorla("bu madde soruyu karşılar mı?", adayMetinler);
  *
  * Ortam: AI_GATEWAY_URL (varsayılan https://ai.nocturndev.com) + AI_GATEWAY_KEY.
