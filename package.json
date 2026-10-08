@@ -1,6 +1,6 @@
 {
   "name": "nocturn-gateway",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "AI Gateway client (Jev + Laya) — zero dependencies, library + CLI",
   "type": "module",
   "main": "dist/gateway.js",
