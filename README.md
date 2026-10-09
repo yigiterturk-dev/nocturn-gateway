@@ -54,3 +54,11 @@ print(laya_saglik())
 print(laya_skorla("Para iadesi talebi mi?", adaylar))   # cevapsız aday None
 print(laya_sor({"text": "..."}, {"duygu": {"type": "noul", "instructions": "..."}}))
 ```
+
+Python CLI (stdlib, TS ikiziyle aynı komutlar):
+
+```bash
+AI_GATEWAY_KEY=... python3 gateway.py laya saglik
+AI_GATEWAY_KEY=... python3 gateway.py laya skorla "Para iadesi talebi mi?" "İade istiyorum"
+AI_GATEWAY_KEY=... python3 gateway.py skor "soru?" "aday 1" "aday 2"
+```

@@ -146,3 +146,51 @@ def sir_al(proje: str, timeout: int = 15) -> dict:
     req = urllib.request.Request(f"{base}/sir/{proje}", headers={"X-Gateway-Key": key})
     with urllib.request.urlopen(req, timeout=timeout) as r:
         return json.loads(r.read().decode())
+
+
+def _cli(argv: list) -> dict:
+    """nocturn-gateway CLI — TS ikiziyle aynı komutlar (triyajsız jenerik yüzey)."""
+    komut, *kalan = argv
+    if komut == "skor":
+        soru, *adaylar = kalan
+        if not soru or not adaylar:
+            raise SystemExit('kullanım: nocturn-gateway skor "<soru>" <aday...>')
+        return {"soru": soru, "adaylar": adaylar, "skorlar": jev_skorla(soru, adaylar)}
+    if komut == "laya":
+        yol, *rest = kalan
+        if yol in ("health", "saglik", "sağlık"):
+            return laya_saglik()
+        if yol == "sor":
+            return laya_sor(json.loads(rest[0]), json.loads(rest[1]))
+        if yol in ("skorla", "skor"):
+            return {"soru": rest[0], "adaylar": rest[1:], "skorlar": laya_skorla(rest[0], rest[1:])}
+        if yol in ("sirala", "sırala"):
+            return {"soru": rest[0], "sonuc": laya_sirala(rest[0], rest[1:])}
+        if yol == "guard":
+            return laya_guard(" ".join(rest))
+        if yol == "sort":
+            return laya_sort(json.loads(rest[0]), json.loads(rest[1]))
+        if yol in ("predict", "triage"):
+            return laya_istek(yol, json.loads(rest[0]), json.loads(rest[1]))
+        raise SystemExit("kullanım: nocturn-gateway laya <health|sor|skorla|sirala|guard|sort|predict|triage>")
+    if komut == "nobet":
+        alt, *rest = kalan
+        if alt == "durum":
+            return nobet_durum()
+        if alt == "beat":
+            if not rest:
+                raise SystemExit("kullanım: nocturn-gateway nobet beat <proje> [iyi|bozuk] [not]")
+            return nobet_at(rest[0], rest[1] if len(rest) > 1 else "iyi", " ".join(rest[2:]))
+        raise SystemExit("kullanım: nocturn-gateway nobet <beat|durum>")
+    if komut == "maske":
+        return maskele(" ".join(kalan))
+    if komut == "sir":
+        if not kalan:
+            raise SystemExit("kullanım: nocturn-gateway sir <proje>")
+        return sir_al(kalan[0])
+    raise SystemExit(__doc__)
+
+
+if __name__ == "__main__":
+    import sys
+    print(json.dumps(_cli(sys.argv[1:]), ensure_ascii=False, indent=2))
