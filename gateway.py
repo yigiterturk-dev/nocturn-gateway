@@ -85,24 +85,21 @@ def laya_sor(state: dict, questions: dict, timeout: int = 30) -> dict:
 
 
 def laya_skorla(soru: str, adaylar: list, metin_uzunluk: int = 700, timeout: int = 30) -> list:
-    """Adayları TEK çağrıda noul ile skorla. Dizi input sırasına hizalı; cevapsız aday None."""
+    """Her adayı AYRI çağrıda noul ile skorla. Dizi input sırasına hizalı; cevapsız aday None.
+
+    Laya modeli tek çağrıda çok `state` alanını güvenilir bağlayamıyor; sunucunun
+    kendi /sort ucu da kayıt başına tek çağrı yapar. Aynı yöntem.
+    """
     if not adaylar:
         return []
-    state: dict = {}
-    questions: dict = {}
-    for i, metin in enumerate(adaylar):
-        state[f"aday_{i}"] = str(metin)[:metin_uzunluk]
-        questions[f"m{i}"] = {
-            "type": "noul",
-            "instructions": (
-                f'aday_{i} alanındaki metin, "{soru}" sorusuna DOĞRUDAN karşılık geliyor mu? '
-                "Aynı konuda olması yetmez; sorulan şeyi bu metin karşılamalıdır."
-            ),
-        }
-    yanit = laya_sor(state, questions, timeout)
     cikti = []
-    for i in range(len(adaylar)):
-        c = (yanit.get("answers") or {}).get(f"m{i}") or {}
+    for metin in adaylar:
+        yanit = laya_sor(
+            {"text": str(metin)[:metin_uzunluk]},
+            {"m": {"type": "noul", "instructions": f'Bu metin şu soruya DOĞRUDAN karşılık geliyor mu: "{soru}"'}},
+            timeout,
+        )
+        c = (yanit.get("answers") or {}).get("m") or {}
         deger = c.get("noul") if isinstance(c.get("noul"), (int, float)) else c.get("score")
         cikti.append(float(deger) if isinstance(deger, (int, float)) else None)
     return cikti
@@ -122,7 +119,16 @@ def laya_guard(prompt: str, timeout: int = 30) -> dict:
 
 
 def laya_sort(items: list, question: dict, order: str = "desc", timeout: int = 60) -> dict:
-    """Laya sort ucu: listeyi verdiğin skor/choice sorusuyla sunucuda sıralar."""
+    """Laya sort ucu: listeyi verdiğin skor/choice sorusuyla sunucuda sıralar.
+
+    criteria şart: score → ["acil değil","yakın zamanda","kritik"], choice → {etiket: "açıklama"}.
+    Eksikse sunucu 500 döner; burada net hata veriyoruz.
+    """
+    if not question or not question.get("criteria"):
+        raise RuntimeError(
+            f'laya sort: "{question.get("type", "?") if question else "?"}" sorusu için criteria şart '
+            '(score → skor ölçeği, choice → {etiket:"açıklama"}).'
+        )
     return _istek("/laya/sort", {"items": items, "question": question, "order": order}, timeout)
 
 

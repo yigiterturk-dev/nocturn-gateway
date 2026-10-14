@@ -83,27 +83,38 @@ test("layaSor: /laya/predict'e state+questions gider, ham answers döner", async
   assert.equal(r.answers.q.choice, "satis");
 });
 
-test("layaSkorla: tek çağrı, input sırasına hizalı, cevapsız null", async () => {
+test("layaSkorla: aday başına tek çağrı, input sırasına hizalı, cevapsız null", async () => {
   const { layaSkorla } = await import("../dist/gateway.js");
   let cagri = 0;
-  globalThis.fetch = (async () => {
+  globalThis.fetch = (async (_url, init) => {
     cagri++;
-    return new Response(
-      JSON.stringify({ answers: { m0: { type: "noul", noul: 0.9 }, m1: { type: "noul" } } }),
-      { status: 200 },
-    );
+    const g = JSON.parse(String(init.body));
+    const yanit = g.state.text === "a" ? { answers: { m: { type: "noul", noul: 0.9 } } } : { answers: { m: { type: "noul" } } };
+    return new Response(JSON.stringify(yanit), { status: 200 });
   });
   const s = await layaSkorla("soru?", ["a", "b"], { key: "t" });
-  assert.equal(cagri, 1);
+  assert.equal(cagri, 2);
   assert.equal(s[0], 0.9);
   assert.equal(s[1], null);
 });
 
 test("layaSirala: skora göre azalan sıralar, null en dibe", async () => {
   const { layaSirala } = await import("../dist/gateway.js");
-  globalThis.fetch = (async () =>
-    new Response(JSON.stringify({ answers: { m0: { type: "noul", noul: 0.2 }, m1: { type: "noul", noul: 0.8 }, m2: { type: "noul" } } }), { status: 200 }));
+  globalThis.fetch = (async (_url, init) => {
+    const g = JSON.parse(String(init.body));
+    const puan = { az: 0.2, cok: 0.8 }[g.state.text];
+    const m = puan === undefined ? { type: "noul" } : { type: "noul", noul: puan };
+    return new Response(JSON.stringify({ answers: { m } }), { status: 200 });
+  });
   const r = await layaSirala("s?", ["az", "cok", "yok"], { key: "t" });
   assert.deepEqual(r.map((x) => x.metin), ["cok", "az", "yok"]);
   assert.equal(r[2].skor, null);
+});
+
+test("layaSort: criteria eksikse ağa çıkmadan net hata fırlatır", async () => {
+  const { layaSort } = await import("../dist/gateway.js");
+  globalThis.fetch = (async () => {
+    throw new Error("ağa çıkılmamalıydı");
+  });
+  await assert.rejects(() => layaSort([{ id: 1, text: "x" }], { type: "score", instructions: "aciliyet?" }, { key: "t" }), /criteria/);
 });

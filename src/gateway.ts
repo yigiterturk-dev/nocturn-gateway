@@ -103,7 +103,7 @@ export type LayaSoruTipi = "noul" | "choice" | "score";
 export interface LayaSoru {
   type: LayaSoruTipi;
   instructions: string;
-  /** choice için zorunlu: {anahtar: "açıklama"} */
+  /** choice için {anahtar:"açıklama"}, score için ["düşük","orta","yüksek"] — zorunlu. */
   criteria?: Record<string, string> | string[];
 }
 
@@ -137,9 +137,13 @@ export async function layaSor(
 }
 
 /**
- * Laya ile skorla: `metin_al` ile state'e yazılan metinleri TEK çağrıda sorar.
+ * Laya ile skorla: her adayı AYRI çağrıda sorar (aday başına tek istek).
  * Dönen dizi input sırasına hizalı; cevapsız/tip uyuşmayan aday `null`.
- * noul → 0-1 skor, score → ham puan, choice → etiket. Eşik KARARI istemcide.
+ * noul → 0-1 skor, score → ham puan. Eşik KARARI istemcide.
+ *
+ * Neden tek tek: Laya modeli tek çağrıda birden çok `state` alanını güvenilir
+ * bağlayamıyor (2+ adayda skorlar sıkışıp sıraya bağlı hale geliyordu).
+ * Sunucunun kendi `/sort` ucu da kayıt başına tek çağrı yapar — aynı yöntem.
  */
 export async function layaSkorla(
   soru: string,
@@ -147,23 +151,19 @@ export async function layaSkorla(
   a?: GatewayAyar & { metinUzunluk?: number },
 ): Promise<Array<number | null>> {
   if (adaylar.length === 0) return [];
-  const state: Record<string, unknown> = {};
-  const questions: Record<string, LayaSoru> = {};
-  adaylar.forEach((metin, i) => {
-    state[`aday_${i}`] = metin.slice(0, a?.metinUzunluk ?? 700);
-    questions[`m${i}`] = {
-      type: "noul",
-      instructions:
-        `aday_${i} alanındaki metin, "${soru}" sorusuna DOĞRUDAN karşılık geliyor mu? ` +
-        `Aynı konuda olması yetmez; sorulan şeyi bu metin karşılamalıdır.`,
-    };
-  });
-  const sonuc = await layaSor(state, questions, a);
-  return adaylar.map((_, i) => {
-    const c = sonuc.answers?.[`m${i}`];
+  const uzunluk = a?.metinUzunluk ?? 700;
+  const skorlar: Array<number | null> = [];
+  for (const metin of adaylar) {
+    const sonuc = await layaSor(
+      { text: metin.slice(0, uzunluk) },
+      { m: { type: "noul", instructions: `Bu metin şu soruya DOĞRUDAN karşılık geliyor mu: "${soru}"` } },
+      a,
+    );
+    const c = sonuc.answers?.m;
     const deger = c?.noul ?? c?.score;
-    return typeof deger === "number" ? deger : null;
-  });
+    skorlar.push(typeof deger === "number" ? deger : null);
+  }
+  return skorlar;
 }
 
 /** Laya ile sırala: adayları tek kriterle (noul/score) puana göre yeniden dizer. */
@@ -197,6 +197,12 @@ export async function layaSort(
   question: LayaSoru,
   a?: GatewayAyar & { order?: "asc" | "desc" },
 ): Promise<LayaKarar> {
+  if (!question?.criteria || (Array.isArray(question.criteria) && question.criteria.length === 0)) {
+    throw new Error(
+      `laya sort: "${question?.type ?? "?"}" sorusu için criteria şart ` +
+        `(score → skor ölçeği ["acil değil","yakın zamanda","kritik"], choice → {etiket:"açıklama"}).`,
+    );
+  }
   return istek<LayaKarar>("/laya/sort", { items, question, order: a?.order ?? "desc" }, a);
 }
 

@@ -25,7 +25,7 @@ const cevap = await layaSor(
   { text: "Ürün 3 gündür açılmıyor" },
   { duygu: { type: "choice", instructions: "Baskın duygu?", criteria: { ofke: "kizgin", notr: "notr" } } },
 );
-const puanlar = await layaSkorla("Para iadesi talebi mi?", metinler);        // TEK çağrı, hizalı, cevapsız = null
+const puanlar = await layaSkorla("Para iadesi talebi mi?", metinler);        // aday başına çağrı, hizalı, cevapsız = null
 const sirali = await layaSirala("Aciliyet?", metinler);                      // skora göre azalan
 ```
 
